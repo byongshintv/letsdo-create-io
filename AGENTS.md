@@ -21,3 +21,20 @@ Create 깔때기·슈트·패키저·호퍼가 아이템을 넣고 뺄 수 있�
 - JDK 17: `/mnt/games/sunlit-valley/java17` (또는 시스템 JDK 17)
 - 대상 모드 jar 원본: `/mnt/games/sunlit-valley/runtime/mods/letsdo-*.jar`, `architectury-9.2.14-forge.jar`(읽기 전용, 이 폴더 `libs/`에 복사해서 사용, 커밋 금지 → .gitignore)
 - 운영 서버(`/mnt/games/sunlit-valley/runtime`)는 절대 수정·재시작하지 않는다.
+
+## 모듈 지도
+- `src/main/java/tv/byongshin/letsdocreateio/SupportedBlocks.java`: 조사된 블록 엔티티 ID와 슬롯 표.
+- `SlotLayout.java`: 불변 슬롯 역할과 삽입 수량 계산.
+- `ContainerItemHandler.java`: Container 어댑터, 시뮬레이션과 스택 제한.
+- `LetsDoCreateIO.java`: common 설정, 능력 중복 확인·부착·무효화, 변경 동기화.
+- `SiloSlots.java`: 사일로의 공개 getCapacity 조회만 리플렉션으로 연결.
+- `src/test/`: JUnit 슬롯 로직 검증.
+- `src/gametest/`: 실제 모드 블록 배치와 입출력 GameTest. 배포 jar에서 제외.
+- `README.md`: 지원 슬롯, 기존 능력 보존 대상, 비 Container·비처리 블록 조사 결과.
+
+## 검증 명령
+- 컴파일러가 있는 JDK 17을 `JAVA_HOME`으로 지정한다. 운영 java17 경로는 JRE여서 빌드에 부족하다.
+- `./gradlew build`: JUnit과 배포 jar 빌드·재난독화.
+- `./gradlew runGameTestServer`: libs의 로컬 모드를 fg.deobf 런타임 의존성으로 로드한 통합 검증.
+- 전체 모드 검증에는 기존 지정 jar 외에 WilderNature 의존성인 Curios도 libs로 복사한다.
+- 결과: `build/libs/letsdo_create_io-1.0.0.jar`, `build/reports/tests/test/`, `run/logs/latest.log`.
