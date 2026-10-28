@@ -1,0 +1,47 @@
+plugins {
+    id 'java'
+    id 'net.minecraftforge.gradle' version '6.0.54'
+}
+version = '1.0.0'
+group = 'tv.byongshin.letsdocreateio'
+base { archivesName = 'letsdo_create_io' }
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+sourceSets {
+    gametest {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+}
+minecraft {
+    mappings channel: 'official', version: '1.20.1'
+    runs {
+        gameTestServer {
+            workingDirectory project.file('run')
+            property 'forge.enabledGameTestNamespaces', 'letsdo_create_io'
+            property 'forge.logging.console.level', 'info'
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', "${layout.buildDirectory.get()}/createSrgToMcp/output.srg"
+            mods { letsdo_create_io { source sourceSets.main; source sourceSets.gametest } }
+        }
+    }
+}
+repositories { mavenCentral(); flatDir { dirs 'libs' } }
+dependencies {
+    minecraft 'net.minecraftforge:forge:1.20.1-47.4.0'
+    fileTree('libs').matching { include '*.jar' }.files.sort().each { jar ->
+        runtimeOnly fg.deobf("local:${jar.name.substring(0, jar.name.length() - 4)}:local")
+    }
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+}
+tasks.named('test') { useJUnitPlatform() }
+tasks.named('jar') {
+    from('LICENSE')
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+    finalizedBy 'reobfJar'
+}
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+
+tasks.configureEach {
+    if (name == "prepareGameTestServer") dependsOn "createSrgToMcp"
+}
