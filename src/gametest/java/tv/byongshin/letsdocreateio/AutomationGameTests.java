@@ -17,9 +17,12 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.material.Fluids;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.common.ForgeHooks;
+import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.fluids.capability.IFluidHandler;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemHandlerHelper;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -92,6 +95,30 @@ public final class AutomationGameTests {
             helper.assertTrue(ItemHandlerHelper.insertItem(face(entity, Direction.DOWN), new ItemStack(Items.COAL), false).getCount() == 1, "Bottom accepted fuel");
             helper.succeed();
         }));
+        for (var water : SupportedBlocks.WATER.entrySet()) {
+            tests.add(test("water_" + water.getKey().replace(':', '_'), helper -> {
+                var entity = place(helper, water.getKey());
+                String key = water.getValue().nbtKey();
+                for (Direction side : new Direction[]{Direction.UP, Direction.NORTH, Direction.DOWN, null}) {
+                    var tank = entity.getCapability(ForgeCapabilities.FLUID_HANDLER, side).orElseThrow(() -> new AssertionError("No tank " + side));
+                    helper.assertTrue(tank.fill(new FluidStack(Fluids.LAVA, 1000), IFluidHandler.FluidAction.EXECUTE) == 0, "Accepted lava");
+                    helper.assertTrue(tank.drain(1000, IFluidHandler.FluidAction.EXECUTE).isEmpty(), "Drained water");
+                }
+                var tank = entity.getCapability(ForgeCapabilities.FLUID_HANDLER, Direction.NORTH).orElseThrow(AssertionError::new);
+                helper.assertTrue(tank.fill(new FluidStack(Fluids.WATER, 1000), IFluidHandler.FluidAction.SIMULATE) == 1000, "Simulated fill");
+                helper.assertTrue(entity.saveWithoutMetadata().getInt(key) == 0, "Simulation changed level");
+                // A bucket's worth equals the native water-bucket step of 25 units.
+                helper.assertTrue(tank.fill(new FluidStack(Fluids.WATER, 1000), IFluidHandler.FluidAction.EXECUTE) == 1000, "Fill bucket");
+                helper.assertTrue(entity.saveWithoutMetadata().getInt(key) == 25, "Bucket did not add 25 units");
+                // Pipes push small amounts per tick; they must accumulate rather than be refused.
+                for (int i = 0; i < 4; i++) tank.fill(new FluidStack(Fluids.WATER, 10), IFluidHandler.FluidAction.EXECUTE);
+                helper.assertTrue(entity.saveWithoutMetadata().getInt(key) == 26, "Small pushes not accumulated");
+                helper.assertTrue(tank.fill(new FluidStack(Fluids.WATER, 10000), IFluidHandler.FluidAction.EXECUTE) == 4000 - 26 * 40, "Overfilled");
+                helper.assertTrue(entity.saveWithoutMetadata().getInt(key) == 100, "Not full");
+                helper.assertTrue(tank.fill(new FluidStack(Fluids.WATER, 100), IFluidHandler.FluidAction.EXECUTE) == 0, "Full tank accepted water");
+                helper.succeed();
+            }));
+        }
         tests.add(test("face_meadow_cauldron", helper -> {
             var entity = place(helper, "meadow:cooking_cauldron");
             Container c = (Container) entity;

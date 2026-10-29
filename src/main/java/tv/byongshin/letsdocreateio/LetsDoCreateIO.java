@@ -19,6 +19,7 @@ import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
+import net.minecraftforge.fluids.capability.IFluidHandler;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.Nullable;
@@ -75,8 +76,16 @@ public final class LetsDoCreateIO {
         }
         LazyOptional<IItemHandler> unsided = LazyOptional.of(() -> new ContainerItemHandler(container, null, layout,
             () -> !entity.isRemoved() && ENABLED.get(id).get(), active, changed));
+        var water = SupportedBlocks.WATER.get(id);
+        boolean nativeFluid = entity.getCapability(ForgeCapabilities.FLUID_HANDLER).isPresent()
+            || event.getCapabilities().values().stream().anyMatch(p -> p.getCapability(ForgeCapabilities.FLUID_HANDLER).isPresent());
+        // One water tank for every face: unlike items there is nothing to route, and any Forge fluid pipe can fill it.
+        LazyOptional<IFluidHandler> tank = water == null || nativeFluid ? LazyOptional.empty()
+            : LazyOptional.of(() -> new WaterLevelHandler(entity, water.nbtKey(), water.maxUnits(),
+                () -> !entity.isRemoved() && ENABLED.get(id).get(), changed));
         event.addCapability(CAPABILITY_ID, new ICapabilityProvider() {
             @Override public <T> LazyOptional<T> getCapability(Capability<T> capability, @Nullable Direction side) {
+                if (capability == ForgeCapabilities.FLUID_HANDLER) return tank.cast();
                 if (capability != ForgeCapabilities.ITEM_HANDLER) return LazyOptional.empty();
                 return (side == null ? unsided : sided.get(side)).cast();
             }
@@ -84,6 +93,7 @@ public final class LetsDoCreateIO {
         event.addListener(() -> {
             unsided.invalidate();
             sided.values().forEach(LazyOptional::invalidate);
+            tank.invalidate();
         });
     }
 }

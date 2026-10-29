@@ -9,6 +9,7 @@ Create 깔때기·슈트·패키저·호퍼가 아이템을 넣고 뺄 수 있�
 - 면별 넣기는 원본 블록의 `WorldlyContainer` 면 규칙을 따르고, 결과 칸은 모든 면에서 뺀다. 필수 이웃 블록이 원본 입력 면을 가리는 경우만 `SlotLayout.sideRoutes`로 옆면 경로를 둔다.
 - 슬롯 의미는 블록별 표(코드 안 정적 표 + `config/letsdo_create_io-common.toml`로 끄기 가능)로 정한다: 입력 칸·연료 칸은 넣기만, 결과 칸은 빼기만. 표에 없는 블록은 손대지 않는다.
 - 넣기는 해당 블록의 `canPlaceItem`·최대 스택을 지키고, 값을 바꾼 뒤 `setChanged()`와 그 블록이 쓰는 동기화(블록 업데이트 전송)를 부른다.
+- 액체는 내부 물 수위가 있는 블록(`SupportedBlocks.WATER`)에만 채우기 전용 Forge 물 탱크로 연결한다(40mB=1칸, NBT 저장·로드 왕복).
 - 손으로 젓기·크랭크 같은 조작은 추가하지 않는다.
 - Let's Do 에셋(ARR)은 복사하지 않는다. 코드는 MIT.
 
@@ -38,4 +39,4 @@ Create 깔때기·슈트·패키저·호퍼가 아이템을 넣고 뺄 수 있�
 - `./gradlew build`: JUnit과 배포 jar 빌드·재난독화.
 - `./gradlew runGameTestServer`: libs의 로컬 모드를 fg.deobf 런타임 의존성으로 로드한 통합 검증.
 - 전체 모드 검증에는 기존 지정 jar 외에 WilderNature 의존성인 Curios도 libs로 복사한다.
-- 결과: `build/libs/letsdo_create_io-1.1.0.jar`, `build/reports/tests/test/`, `run/logs/latest.log`.
+- 결과: `build/libs/letsdo_create_io-1.2.0.jar`, `build/reports/tests/test/`, `run/logs/latest.log`.

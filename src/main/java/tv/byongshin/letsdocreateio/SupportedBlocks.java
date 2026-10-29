@@ -27,6 +27,11 @@ public final class SupportedBlocks {
         static final TagKey<Item> LARGE = tag("meadow:large_water_fill");
     }
     private static final SlotLayout PAIR = new SlotLayout(3, List.of(1, 2), List.of(), List.of(0));
+    /** Internal water level NBT key and maximum, for blocks filled from water items; exposed as a fill-only tank. */
+    public record WaterLevel(String nbtKey, int maxUnits) {}
+    public static final Map<String, WaterLevel> WATER = Map.of(
+        "meadow:cooking_cauldron", new WaterLevel("FluidLevel", 100),
+        "herbalbrews:tea_kettle", new WaterLevel("WaterLevel", 100));
     public static final Map<String, SlotLayout> TABLE = Map.ofEntries(
         Map.entry("bakery:small_cooking_pot", POT),
         Map.entry("beachparty:tiki_bar", PAIR),

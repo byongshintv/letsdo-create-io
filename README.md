@@ -3,7 +3,8 @@
 A server-side Forge **1.20.1 / 47.4.0**, Java 17 addon that exposes selected
 Let's Do processing inventories through Forge `IItemHandler`. Create funnels,
 chutes, packagers and other capability-based automation can insert ingredients
-and extract products. No blocks, items, textures, recipes, or networking channels
+and extract products. Two water-using blocks also get a fill-only Forge fluid tank.
+No blocks, items, textures, recipes, or networking channels
 are added. No Let's Do code or assets are redistributed.
 
 ## Installation
@@ -50,6 +51,27 @@ Each face gets its own handler:
 - Blocks without native face rules (silo, brewing station) expose the same slots on
   every face.
 - The unsided (`null`) capability exposes every table slot.
+
+### Water (fluid input)
+
+Two blocks keep an internal water level (0–100) that the original mod fills only from
+water items. They also get a Forge `IFluidHandler` water tank, so any Forge fluid pipe
+(Create, Mekanism, Pipez and others) can fill them from any face:
+
+| Block entity registry ID | NBT level key | Capacity |
+| --- | --- | --- |
+| `meadow:cooking_cauldron` | `FluidLevel` | 100 units = 4000 mB |
+| `herbalbrews:tea_kettle` | `WaterLevel` | 100 units = 4000 mB |
+
+- One unit is 40 mB, because a water bucket adds 25 units natively, so 1000 mB = 25 units.
+- The tank accepts plain water only and is **fill-only**; draining returns nothing.
+- Small pushes below one unit are buffered in memory, so slow pipes still fill the
+  block. A buffered remainder (under 40 mB) is lost when the block unloads.
+- The level is read and written through the block entity's public save/load NBT
+  round trip, not through Let's Do classes or reflection.
+- Blocks that already expose a fluid handler are left untouched.
+- Not covered: the fermentation barrel stores juice from juice items, and Let's Do
+  registers no juice fluid. The brewing station has no water level in its block entity.
 
 | Block entity registry ID | Blocks / variants | Input slots | Fuel slots | Output slots |
 | --- | --- | --- | --- | --- |
@@ -174,7 +196,7 @@ silently passing. JUnit tests validate immutable slot roles and insertion limits
 GameTests also exercise the real ItemStack adapter, NBT, configuration gating,
 and preservation of native/untargeted handlers.
 
-Build output: `build/libs/letsdo_create_io-1.1.0.jar`.
+Build output: `build/libs/letsdo_create_io-1.2.0.jar`.
 JUnit results: `build/reports/tests/test/index.html`.
 GameTest console: `run/logs/latest.log`.
 
@@ -182,9 +204,11 @@ GameTest console: `run/logs/latest.log`.
 
 On 2026-10-29, `./gradlew build` succeeded with JDK 17.0.21 and all five
 JUnit tests passed. `./gradlew runGameTestServer` exited successfully with
-**40/40 required tests passed**: 31 supported block variants across 17 entity
+**42/42 required tests passed**: 31 supported block variants across 17 entity
 types (including per-face insertion limits), three face-routing checks (roaster
 bowls and side extraction, stove fuel/ingredient split, Meadow cauldron water),
+two water-tank checks (all faces, water only, bucket = 25 units, accumulated
+small pushes, capacity),
 four native-handler checks, and two common-contract checks. All 12 requested
 Let's Do jars loaded, together with Architectury and Curios; no mod was skipped.
 Development runs remap dependency Mixin refmaps from SRG to the official mapping
