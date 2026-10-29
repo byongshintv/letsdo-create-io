@@ -60,20 +60,30 @@ public final class LetsDoCreateIO {
             }
         }
         IntPredicate active = id.equals("farm_and_charm:silo") ? SiloSlots.forEntity(entity) : slot -> true;
-        LazyOptional<IItemHandler> handler = LazyOptional.of(() -> new ContainerItemHandler(container, layout,
-            () -> !entity.isRemoved() && ENABLED.get(id).get(), active, () -> {
-                entity.setChanged();
-                var level = entity.getLevel();
-                if (level != null && !level.isClientSide) {
-                    var state = level.getBlockState(entity.getBlockPos());
-                    level.sendBlockUpdated(entity.getBlockPos(), state, state, Block.UPDATE_CLIENTS);
-                }
-            }));
+        Runnable changed = () -> {
+            entity.setChanged();
+            var level = entity.getLevel();
+            if (level != null && !level.isClientSide) {
+                var state = level.getBlockState(entity.getBlockPos());
+                level.sendBlockUpdated(entity.getBlockPos(), state, state, Block.UPDATE_CLIENTS);
+            }
+        };
+        Map<Direction, LazyOptional<IItemHandler>> sided = new java.util.EnumMap<>(Direction.class);
+        for (Direction side : Direction.values()) {
+            sided.put(side, LazyOptional.of(() -> new ContainerItemHandler(container, side, layout,
+                () -> !entity.isRemoved() && ENABLED.get(id).get(), active, changed)));
+        }
+        LazyOptional<IItemHandler> unsided = LazyOptional.of(() -> new ContainerItemHandler(container, null, layout,
+            () -> !entity.isRemoved() && ENABLED.get(id).get(), active, changed));
         event.addCapability(CAPABILITY_ID, new ICapabilityProvider() {
             @Override public <T> LazyOptional<T> getCapability(Capability<T> capability, @Nullable Direction side) {
-                return capability == ForgeCapabilities.ITEM_HANDLER ? handler.cast() : LazyOptional.empty();
+                if (capability != ForgeCapabilities.ITEM_HANDLER) return LazyOptional.empty();
+                return (side == null ? unsided : sided.get(side)).cast();
             }
         });
-        event.addListener(handler::invalidate);
+        event.addListener(() -> {
+            unsided.invalidate();
+            sided.values().forEach(LazyOptional::invalidate);
+        });
     }
 }

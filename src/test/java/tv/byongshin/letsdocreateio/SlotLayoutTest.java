@@ -35,4 +35,11 @@ class SlotLayoutTest {
         assertTrue(layout.canExtract(2));
         assertThrows(UnsupportedOperationException.class, () -> layout.outputs().clear());
     }
+    @Test void sideRoutesOnlyReachInsertableSlots() {
+        assertThrows(IllegalArgumentException.class, () -> new SlotLayout(3, List.of(0), List.of(), List.of(2),
+            List.of(new SlotLayout.Route(stack -> true, List.of(2)))));
+        var layout = new SlotLayout(3, List.of(0), List.of(1), List.of(2), List.of(new SlotLayout.Route(stack -> false, List.of(1))));
+        assertEquals(List.of(), layout.sideSlots(null));
+        assertNull(new SlotLayout(3, List.of(0), List.of(), List.of(2)).sideSlots(null));
+    }
 }

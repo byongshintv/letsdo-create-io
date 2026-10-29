@@ -2,12 +2,21 @@ package tv.byongshin.letsdocreateio;
 
 import java.util.function.BooleanSupplier;
 import java.util.function.IntPredicate;
+import net.minecraft.core.Direction;
 import net.minecraft.world.Container;
+import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.items.IItemHandler;
+import org.jetbrains.annotations.Nullable;
 
+/**
+ * One handler per face. Insertion follows the block's own WorldlyContainer face rules (or the layout's side routes);
+ * outputs can be taken from every face, because a pot's bottom sits on its heat source and a stove's top holds a pot.
+ * The unsided (null) handler keeps every table slot open.
+ */
 public final class ContainerItemHandler implements IItemHandler {
     private final Container container;
+    private final @Nullable Direction side;
     private final SlotLayout layout;
     private final BooleanSupplier enabled;
     private final IntPredicate active;
@@ -15,7 +24,12 @@ public final class ContainerItemHandler implements IItemHandler {
 
     public ContainerItemHandler(Container container, SlotLayout layout, BooleanSupplier enabled,
                                 IntPredicate active, Runnable changed) {
+        this(container, null, layout, enabled, active, changed);
+    }
+    public ContainerItemHandler(Container container, @Nullable Direction side, SlotLayout layout, BooleanSupplier enabled,
+                                IntPredicate active, Runnable changed) {
         this.container = container;
+        this.side = side;
         this.layout = layout;
         this.enabled = enabled;
         this.active = active;
@@ -31,7 +45,20 @@ public final class ContainerItemHandler implements IItemHandler {
     }
     @Override public int getSlotLimit(int slot) { return accessible(slot) ? container.getMaxStackSize() : 0; }
     @Override public boolean isItemValid(int slot, ItemStack stack) {
-        return accessible(slot) && layout.canInsert(slot) && !stack.isEmpty() && container.canPlaceItem(slot, stack);
+        return accessible(slot) && layout.canInsert(slot) && !stack.isEmpty() && faceAllows(slot, stack)
+            && container.canPlaceItem(slot, stack);
+    }
+    private boolean faceAllows(int slot, ItemStack stack) {
+        if (side == null) return true;
+        if (side.getAxis().isHorizontal()) {
+            var routed = layout.sideSlots(stack);
+            if (routed != null) return routed.contains(slot);
+        }
+        if (!(container instanceof WorldlyContainer worldly)) return true;
+        for (int faceSlot : worldly.getSlotsForFace(side)) {
+            if (faceSlot == slot) return worldly.canPlaceItemThroughFace(slot, stack, side);
+        }
+        return false;
     }
     @Override public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
         if (!isItemValid(slot, stack)) return stack;

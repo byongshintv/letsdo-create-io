@@ -25,11 +25,31 @@ where the original mod requires them.
 ## Supported blocks
 
 Indices below are the original, **zero-based Container slots**, not GUI positions.
-All six faces and the unsided capability expose the same slots. Inputs and fuel
-are insertion-only; outputs are extraction-only. Insertion respects
-`Container.canPlaceItem`, container capacity, item stack size, and stack NBT.
-Other sided predicates are deliberately not used. Simulation never changes the
-inventory; actual changes call `setChanged` and send a block update.
+Inputs and fuel are insertion-only; outputs are extraction-only. Insertion
+respects `Container.canPlaceItem`, container capacity, item stack size, and stack
+NBT. Simulation never changes the inventory; actual changes call `setChanged` and
+send a block update.
+
+### Faces
+
+Each face gets its own handler:
+
+- **Insertion** follows the block's own `WorldlyContainer` face rules
+  (`getSlotsForFace` and `canPlaceItemThroughFace`), the same layout the original
+  mod designed for vanilla hoppers. For example, pots, the pan and the roaster take
+  ingredients from the top and serving containers (bowls) from the sides.
+- **Extraction** of output slots works from **every face**, because a pot's or
+  roaster's bottom usually rests on its heat source and a stove's top holds a pot.
+- **Covered native faces.** Two cases have an input whose only native face is the
+  one a required neighbour covers. Their horizontal faces route by item instead:
+  - Stoves (`farm_and_charm`, `candlelight`): fuel goes to slot 4, anything else to
+    ingredients 1–3. Natively ingredients enter only from the top.
+  - Meadow cooking cauldron: `meadow:small_water_fill` / `large_water_fill` items go
+    to slot 7, anything else to 1–6. Natively water enters only from below, where
+    the heat source must be.
+- Blocks without native face rules (silo, brewing station) expose the same slots on
+  every face.
+- The unsided (`null`) capability exposes every table slot.
 
 | Block entity registry ID | Blocks / variants | Input slots | Fuel slots | Output slots |
 | --- | --- | --- | --- | --- |
@@ -154,19 +174,21 @@ silently passing. JUnit tests validate immutable slot roles and insertion limits
 GameTests also exercise the real ItemStack adapter, NBT, configuration gating,
 and preservation of native/untargeted handlers.
 
-Build output: `build/libs/letsdo_create_io-1.0.0.jar`.
+Build output: `build/libs/letsdo_create_io-1.1.0.jar`.
 JUnit results: `build/reports/tests/test/index.html`.
 GameTest console: `run/logs/latest.log`.
 
 ## Verified result
 
-On 2026-10-29, `./gradlew build` succeeded with JDK 17.0.21 and all four
+On 2026-10-29, `./gradlew build` succeeded with JDK 17.0.21 and all five
 JUnit tests passed. `./gradlew runGameTestServer` exited successfully with
-**37/37 required tests passed**: 31 supported block variants across 17 entity
-types, four native-handler checks, and two common-contract checks. All 12
-requested Let's Do jars loaded, together with Architectury and Curios; no mod
-was skipped. Development runs remap dependency Mixin refmaps from SRG to the
-official mapping using `createSrgToMcp`.
+**40/40 required tests passed**: 31 supported block variants across 17 entity
+types (including per-face insertion limits), three face-routing checks (roaster
+bowls and side extraction, stove fuel/ingredient split, Meadow cauldron water),
+four native-handler checks, and two common-contract checks. All 12 requested
+Let's Do jars loaded, together with Architectury and Curios; no mod was skipped.
+Development runs remap dependency Mixin refmaps from SRG to the official mapping
+using `createSrgToMcp`.
 
 These tests establish inventory capability behavior, not complete automated
 recipe production, Create transport timing, or manual-action replacement.

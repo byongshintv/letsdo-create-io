@@ -19,7 +19,9 @@ import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.gametest.GameTestHolder;
+import net.minecraftforge.common.ForgeHooks;
 import net.minecraftforge.items.IItemHandler;
+import net.minecraftforge.items.ItemHandlerHelper;
 import net.minecraftforge.registries.ForgeRegistries;
 
 @GameTestHolder(LetsDoCreateIO.MOD_ID)
@@ -57,6 +59,49 @@ public final class AutomationGameTests {
             }
         }
         tests.add(test("handler_contract", AutomationGameTests::handlerContract));
+        tests.add(test("face_roaster", helper -> {
+            var entity = place(helper, "farm_and_charm:roaster");
+            Container c = (Container) entity;
+            // Owner report 10-29: a bowl fed from the side landed in an ingredient slot. Sides feed the bowl slot only.
+            helper.assertTrue(ItemHandlerHelper.insertItem(face(entity, Direction.NORTH), new ItemStack(Items.BOWL), false).isEmpty(), "Side bowl rejected");
+            helper.assertTrue(c.getItem(6).is(Items.BOWL), "Side bowl not in container slot");
+            helper.assertTrue(ItemHandlerHelper.insertItem(face(entity, Direction.UP), new ItemStack(Items.APPLE), false).isEmpty(), "Top ingredient rejected");
+            helper.assertTrue(c.getItem(0).is(Items.APPLE), "Top ingredient not in slot 0");
+            // With the bowl slot occupied, a side has nowhere else to put an apple.
+            helper.assertTrue(ItemHandlerHelper.insertItem(face(entity, Direction.EAST), new ItemStack(Items.APPLE), false).getCount() == 1,
+                "Side apple entered an ingredient slot");
+            // The roaster's bottom is on its heat source; the result must also leave through a side.
+            c.setItem(7, new ItemStack(Items.BREAD));
+            helper.assertTrue(face(entity, Direction.WEST).extractItem(7, 1, false).is(Items.BREAD), "Side extraction of result failed");
+            helper.succeed();
+        }));
+        tests.add(test("face_stove", helper -> {
+            var entity = place(helper, "farm_and_charm:stove_block");
+            Container c = (Container) entity;
+            var side = face(entity, Direction.SOUTH);
+            helper.assertTrue(ItemHandlerHelper.insertItem(side, new ItemStack(Items.COAL), false).isEmpty(), "Side fuel rejected");
+            helper.assertTrue(c.getItem(4).is(Items.COAL), "Side fuel not in fuel slot");
+            ItemStack ingredient = ForgeRegistries.ITEMS.getValues().stream().map(ItemStack::new)
+                .filter(stack -> !stack.isEmpty() && ForgeHooks.getBurnTime(stack, null) == 0 && c.canPlaceItem(1, stack))
+                .findFirst().orElseThrow();
+            helper.assertTrue(ItemHandlerHelper.insertItem(side, ingredient.copy(), false).isEmpty(), "Side ingredient rejected");
+            helper.assertTrue(ItemStack.isSameItem(c.getItem(1), ingredient), "Side ingredient not in slot 1");
+            helper.assertTrue(c.getItem(4).getCount() == 1, "Ingredient entered fuel slot");
+            c.setItem(0, new ItemStack(Items.BREAD));
+            helper.assertTrue(side.extractItem(0, 1, false).is(Items.BREAD), "Side extraction of result failed");
+            helper.assertTrue(ItemHandlerHelper.insertItem(face(entity, Direction.DOWN), new ItemStack(Items.COAL), false).getCount() == 1, "Bottom accepted fuel");
+            helper.succeed();
+        }));
+        tests.add(test("face_meadow_cauldron", helper -> {
+            var entity = place(helper, "meadow:cooking_cauldron");
+            Container c = (Container) entity;
+            var side = face(entity, Direction.NORTH);
+            helper.assertTrue(ItemHandlerHelper.insertItem(side, new ItemStack(Items.WATER_BUCKET), false).isEmpty(), "Side water rejected");
+            helper.assertTrue(c.getItem(7).is(Items.WATER_BUCKET), "Side water not in fluid slot");
+            helper.assertTrue(ItemHandlerHelper.insertItem(side, new ItemStack(Items.APPLE), false).isEmpty(), "Side ingredient rejected");
+            helper.assertTrue(c.getItem(1).is(Items.APPLE), "Side ingredient not in slot 1");
+            helper.succeed();
+        }));
         tests.add(test("untargeted_chest", helper -> {
             helper.setBlock(new BlockPos(1, 1, 1), Blocks.CHEST);
             var be = helper.getBlockEntity(new BlockPos(1, 1, 1));
@@ -65,6 +110,17 @@ public final class AutomationGameTests {
             helper.succeed();
         }));
         return tests;
+    }
+    private static BlockEntity place(GameTestHelper helper, String typeId) {
+        var type = ForgeRegistries.BLOCK_ENTITY_TYPES.getValue(new ResourceLocation(typeId));
+        Block block = ForgeRegistries.BLOCKS.getValues().stream().filter(b -> type.isValid(b.defaultBlockState())).findFirst().orElseThrow();
+        BlockPos pos = new BlockPos(1, 1, 1);
+        helper.setBlock(pos.below(), Blocks.STONE);
+        helper.setBlock(pos, block);
+        return helper.getBlockEntity(pos);
+    }
+    private static IItemHandler face(BlockEntity entity, Direction side) {
+        return entity.getCapability(ForgeCapabilities.ITEM_HANDLER, side).orElseThrow(AssertionError::new);
     }
     private static TestFunction test(String name, java.util.function.Consumer<GameTestHelper> body) {
         return new TestFunction("automation", "letsdo_create_io." + name, "letsdo_create_io:empty",
@@ -82,7 +138,13 @@ public final class AutomationGameTests {
         helper.assertTrue(handler instanceof ContainerItemHandler, id + " must use attached handler");
         helper.assertTrue(handler.getSlots() == container.getContainerSize(), id + " size mismatch");
         for (Direction side : Direction.values()) {
-            helper.assertTrue(entity.getCapability(ForgeCapabilities.ITEM_HANDLER, side).orElseThrow(AssertionError::new) == handler, id + " differs by side");
+            var faced = entity.getCapability(ForgeCapabilities.ITEM_HANDLER, side).orElseThrow(AssertionError::new);
+            helper.assertTrue(faced instanceof ContainerItemHandler && faced != handler, id + " missing face handler " + side);
+            for (int slot = 0; slot < layout.size(); slot++) {
+                if (!layout.canInsert(slot)) {
+                    helper.assertTrue(!faced.isItemValid(slot, new ItemStack(Items.APPLE)), id + " face " + side + " opened " + slot);
+                }
+            }
         }
         for (int slot = 0; slot < layout.size(); slot++) {
             if (handler.getSlotLimit(slot) == 0) {
