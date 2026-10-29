@@ -2,7 +2,9 @@ package tv.byongshin.letsdocreateio;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.function.IntPredicate;
+import java.util.function.Supplier;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.Container;
@@ -42,6 +44,14 @@ public final class LetsDoCreateIO {
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, CONFIG);
         MinecraftForge.EVENT_BUS.addGenericListener(BlockEntity.class, EventPriority.LOWEST, this::attach);
     }
+    private static void markChanged(BlockEntity entity) {
+        entity.setChanged();
+        var level = entity.getLevel();
+        if (level != null && !level.isClientSide) {
+            var state = level.getBlockState(entity.getBlockPos());
+            level.sendBlockUpdated(entity.getBlockPos(), state, state, Block.UPDATE_CLIENTS);
+        }
+    }
     private void attach(AttachCapabilitiesEvent<BlockEntity> event) {
         BlockEntity entity = event.getObject();
         ResourceLocation key = ForgeRegistries.BLOCK_ENTITY_TYPES.getKey(entity.getType());
@@ -60,22 +70,21 @@ public final class LetsDoCreateIO {
                 if (provider.getCapability(ForgeCapabilities.ITEM_HANDLER, side).isPresent()) return;
             }
         }
-        IntPredicate active = id.equals("farm_and_charm:silo") ? SiloSlots.forEntity(entity) : slot -> true;
-        Runnable changed = () -> {
-            entity.setChanged();
-            var level = entity.getLevel();
-            if (level != null && !level.isClientSide) {
-                var state = level.getBlockState(entity.getBlockPos());
-                level.sendBlockUpdated(entity.getBlockPos(), state, state, Block.UPDATE_CLIENTS);
-            }
+        SiloSlots silo = id.equals("farm_and_charm:silo") ? new SiloSlots(entity) : null;
+        Supplier<Container> target = silo != null ? silo::target : () -> container;
+        IntPredicate active = silo != null ? silo::active : slot -> true;
+        // The changed block is the target: a silo controller, not necessarily the segment the funnel faces.
+        Consumer<Container> changedItems = changedContainer -> {
+            if (changedContainer instanceof BlockEntity changedEntity) markChanged(changedEntity);
         };
+        Runnable changed = () -> markChanged(entity);
         Map<Direction, LazyOptional<IItemHandler>> sided = new java.util.EnumMap<>(Direction.class);
         for (Direction side : Direction.values()) {
-            sided.put(side, LazyOptional.of(() -> new ContainerItemHandler(container, side, layout,
-                () -> !entity.isRemoved() && ENABLED.get(id).get(), active, changed)));
+            sided.put(side, LazyOptional.of(() -> new ContainerItemHandler(target, side, layout,
+                () -> !entity.isRemoved() && ENABLED.get(id).get(), active, changedItems)));
         }
-        LazyOptional<IItemHandler> unsided = LazyOptional.of(() -> new ContainerItemHandler(container, null, layout,
-            () -> !entity.isRemoved() && ENABLED.get(id).get(), active, changed));
+        LazyOptional<IItemHandler> unsided = LazyOptional.of(() -> new ContainerItemHandler(target, null, layout,
+            () -> !entity.isRemoved() && ENABLED.get(id).get(), active, changedItems));
         var water = SupportedBlocks.WATER.get(id);
         boolean nativeFluid = entity.getCapability(ForgeCapabilities.FLUID_HANDLER).isPresent()
             || event.getCapabilities().values().stream().anyMatch(p -> p.getCapability(ForgeCapabilities.FLUID_HANDLER).isPresent());

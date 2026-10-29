@@ -98,11 +98,13 @@ Container. Only ingredient insertion is available; beer collection and brewing
 interactions remain manual. No synthetic output slot or reflective beer access
 is added.
 
-² A silo controller of capacity `N` exposes inputs `0..N-1` and outputs
-`81..81+N-1`. Other slots and non-controller segments reject automation. Its
-public `getCapacity()` method is the only reflective call, because `Container`
-always reports 162 slots even for a single-block silo. Unsupported method versions
-fail closed. Automation connects to the controller; it does not redirect to it.
+² A multiblock silo keeps its whole inventory in its controller segment. Automation
+on **any segment** is forwarded to the current controller, resolved on every call, so
+funnels and pipes work wherever they touch the silo. A controller of capacity `N`
+exposes inputs `0..N-1` and outputs `81..81+N-1`; other slots reject automation.
+The silo's public `getControllerBE()` and `getCapacity()` methods are the only
+reflective calls, because `Container` always reports 162 slots and segments report
+capacity 0. Unsupported method versions fail closed.
 
 ³ Apple press slot 1 is the mashing recipe's output and the juice recipe's internal
 input. Extraction there removes mash before the second stage; extract from slot
@@ -196,7 +198,7 @@ silently passing. JUnit tests validate immutable slot roles and insertion limits
 GameTests also exercise the real ItemStack adapter, NBT, configuration gating,
 and preservation of native/untargeted handlers.
 
-Build output: `build/libs/letsdo_create_io-1.2.0.jar`.
+Build output: `build/libs/letsdo_create_io-1.3.0.jar`.
 JUnit results: `build/reports/tests/test/index.html`.
 GameTest console: `run/logs/latest.log`.
 
@@ -204,11 +206,12 @@ GameTest console: `run/logs/latest.log`.
 
 On 2026-10-29, `./gradlew build` succeeded with JDK 17.0.21 and all five
 JUnit tests passed. `./gradlew runGameTestServer` exited successfully with
-**42/42 required tests passed**: 31 supported block variants across 17 entity
+**43/43 required tests passed**: 31 supported block variants across 17 entity
 types (including per-face insertion limits), three face-routing checks (roaster
 bowls and side extraction, stove fuel/ingredient split, Meadow cauldron water),
 two water-tank checks (all faces, water only, bucket = 25 units, accumulated
-small pushes, capacity),
+small pushes, capacity), a two-block silo multiblock check (segment input reaches
+the controller, segment output extraction, capacity limit),
 four native-handler checks, and two common-contract checks. All 12 requested
 Let's Do jars loaded, together with Architectury and Curios; no mod was skipped.
 Development runs remap dependency Mixin refmaps from SRG to the official mapping

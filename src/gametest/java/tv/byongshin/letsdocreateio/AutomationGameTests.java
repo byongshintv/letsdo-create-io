@@ -119,6 +119,29 @@ public final class AutomationGameTests {
                 helper.succeed();
             }));
         }
+        tests.add(test("silo_multiblock", helper -> {
+            // Owner report 10-29: funnels on a multiblock silo did nothing, because only the controller holds items.
+            var type = ForgeRegistries.BLOCK_ENTITY_TYPES.getValue(new ResourceLocation("farm_and_charm:silo"));
+            Block block = ForgeRegistries.BLOCKS.getValues().stream().filter(b -> type.isValid(b.defaultBlockState())).findFirst().orElseThrow();
+            BlockPos low = new BlockPos(1, 1, 1);
+            helper.setBlock(low.below(), Blocks.STONE);
+            helper.setBlock(low, block);
+            helper.setBlock(low.above(), block);
+            helper.succeedWhen(() -> {
+                BlockEntity a = helper.getBlockEntity(low), b = helper.getBlockEntity(low.above());
+                boolean aController = isController(a);
+                helper.assertTrue(aController != isController(b), "Silo multiblock not formed yet");
+                BlockEntity segment = aController ? b : a, controller = aController ? a : b;
+                var handler = segment.getCapability(ForgeCapabilities.ITEM_HANDLER, Direction.NORTH).orElseThrow(AssertionError::new);
+                ItemStack input = ForgeRegistries.ITEMS.getValues().stream().map(ItemStack::new)
+                    .filter(stack -> !stack.isEmpty() && ((Container) controller).canPlaceItem(0, stack)).findFirst().orElseThrow();
+                helper.assertTrue(ItemHandlerHelper.insertItem(handler, input.copy(), false).isEmpty(), "Segment refused input");
+                helper.assertTrue(ItemStack.isSameItem(((Container) controller).getItem(0), input), "Input did not reach controller");
+                ((Container) controller).setItem(81, new ItemStack(Items.BREAD));
+                helper.assertTrue(handler.extractItem(81, 1, false).is(Items.BREAD), "Segment output extraction failed");
+                helper.assertTrue(handler.insertItem(2, input.copy(), false).getCount() == input.getCount(), "Slot beyond capacity 2 accepted");
+            });
+        }));
         tests.add(test("face_meadow_cauldron", helper -> {
             var entity = place(helper, "meadow:cooking_cauldron");
             Container c = (Container) entity;
@@ -145,6 +168,13 @@ public final class AutomationGameTests {
         helper.setBlock(pos.below(), Blocks.STONE);
         helper.setBlock(pos, block);
         return helper.getBlockEntity(pos);
+    }
+    private static boolean isController(BlockEntity entity) {
+        try {
+            return (Boolean) entity.getClass().getMethod("isController").invoke(entity);
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError(e);
+        }
     }
     private static IItemHandler face(BlockEntity entity, Direction side) {
         return entity.getCapability(ForgeCapabilities.ITEM_HANDLER, side).orElseThrow(AssertionError::new);

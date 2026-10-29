@@ -29,7 +29,7 @@ Create 깔때기·슈트·패키저·호퍼가 아이템을 넣고 뺄 수 있�
 - `SlotLayout.java`: 불변 슬롯 역할과 삽입 수량 계산.
 - `ContainerItemHandler.java`: Container 어댑터, 시뮬레이션과 스택 제한.
 - `LetsDoCreateIO.java`: common 설정, 능력 중복 확인·부착·무효화, 변경 동기화.
-- `SiloSlots.java`: 사일로의 공개 getCapacity 조회만 리플렉션으로 연결.
+- `SiloSlots.java`: 사일로 멀티블록의 공개 getControllerBE·getCapacity만 리플렉션으로 호출해 모든 세그먼트를 컨트롤러로 전달.
 - `src/test/`: JUnit 슬롯 로직 검증.
 - `src/gametest/`: 실제 모드 블록 배치와 입출력 GameTest. 배포 jar에서 제외.
 - `README.md`: 지원 슬롯, 기존 능력 보존 대상, 비 Container·비처리 블록 조사 결과.
@@ -39,4 +39,4 @@ Create 깔때기·슈트·패키저·호퍼가 아이템을 넣고 뺄 수 있�
 - `./gradlew build`: JUnit과 배포 jar 빌드·재난독화.
 - `./gradlew runGameTestServer`: libs의 로컬 모드를 fg.deobf 런타임 의존성으로 로드한 통합 검증.
 - 전체 모드 검증에는 기존 지정 jar 외에 WilderNature 의존성인 Curios도 libs로 복사한다.
-- 결과: `build/libs/letsdo_create_io-1.2.0.jar`, `build/reports/tests/test/`, `run/logs/latest.log`.
+- 결과: `build/libs/letsdo_create_io-1.3.0.jar`, `build/reports/tests/test/`, `run/logs/latest.log`.
