@@ -104,7 +104,9 @@ funnels and pipes work wherever they touch the silo. A controller of capacity `N
 exposes inputs `0..N-1` and outputs `81..81+N-1`; other slots reject automation.
 The silo's public `getControllerBE()` and `getCapacity()` methods are the only
 reflective calls, because `Container` always reports 162 slots and segments report
-capacity 0. Unsupported method versions fail closed.
+capacity 0. Unsupported method versions fail closed. Drying needs an empty output
+slot: finished items stay in outputs until extracted or dropped by opening the silo,
+so automation that only inserts stops once every output slot is filled.
 
 ³ Apple press slot 1 is the mashing recipe's output and the juice recipe's internal
 input. Extraction there removes mash before the second stage; extract from slot
@@ -206,12 +208,13 @@ GameTest console: `run/logs/latest.log`.
 
 On 2026-10-29, `./gradlew build` succeeded with JDK 17.0.21 and all five
 JUnit tests passed. `./gradlew runGameTestServer` exited successfully with
-**43/43 required tests passed**: 31 supported block variants across 17 entity
+**44/44 required tests passed**: 31 supported block variants across 17 entity
 types (including per-face insertion limits), three face-routing checks (roaster
 bowls and side extraction, stove fuel/ingredient split, Meadow cauldron water),
 two water-tank checks (all faces, water only, bucket = 25 units, accumulated
 small pushes, capacity), a two-block silo multiblock check (segment input reaches
-the controller, segment output extraction, capacity limit),
+the controller, segment output extraction, capacity limit), a silo drying check
+(an automation-inserted stack dries into the output slot and can be extracted),
 four native-handler checks, and two common-contract checks. All 12 requested
 Let's Do jars loaded, together with Architectury and Curios; no mod was skipped.
 Development runs remap dependency Mixin refmaps from SRG to the official mapping

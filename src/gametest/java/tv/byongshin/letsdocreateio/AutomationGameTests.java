@@ -142,6 +142,21 @@ public final class AutomationGameTests {
                 helper.assertTrue(handler.insertItem(2, input.copy(), false).getCount() == input.getCount(), "Slot beyond capacity 2 accepted");
             });
         }));
+        tests.add(new TestFunction("automation", "letsdo_create_io.silo_dries_inserted_items", "letsdo_create_io:empty",
+            Rotation.NONE, 400, 0, true, helper -> {
+            // Owner report 10-29: items inserted by automation seemed not to start drying.
+            var entity = place(helper, "farm_and_charm:silo");
+            Container c = (Container) entity;
+            ItemStack fresh = ForgeRegistries.ITEMS.getValues().stream().map(item -> new ItemStack(item, 16))
+                .filter(stack -> !stack.isEmpty() && isDryItem(helper, stack)).findFirst().orElseThrow();
+            var handler = face(entity, Direction.UP);
+            helper.assertTrue(ItemHandlerHelper.insertItem(handler, fresh.copy(), false).isEmpty(), "Silo refused dry item");
+            helper.succeedWhen(() -> {
+                helper.assertTrue(!c.getItem(81).isEmpty(), "Inserted item not dried yet");
+                helper.assertTrue(c.getItem(0).isEmpty(), "Fresh item left behind");
+                helper.assertTrue(handler.extractItem(81, 64, false).getCount() == 16, "Dried output not extractable");
+            });
+        }));
         tests.add(test("face_meadow_cauldron", helper -> {
             var entity = place(helper, "meadow:cooking_cauldron");
             Container c = (Container) entity;
@@ -168,6 +183,14 @@ public final class AutomationGameTests {
         helper.setBlock(pos.below(), Blocks.STONE);
         helper.setBlock(pos, block);
         return helper.getBlockEntity(pos);
+    }
+    private static boolean isDryItem(GameTestHelper helper, ItemStack stack) {
+        try {
+            return (Boolean) Class.forName("net.satisfy.farm_and_charm.block.SiloBlock")
+                .getMethod("isDryItem", net.minecraft.world.level.Level.class, ItemStack.class).invoke(null, helper.getLevel(), stack);
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError(e);
+        }
     }
     private static boolean isController(BlockEntity entity) {
         try {
