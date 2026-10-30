@@ -26,6 +26,7 @@ public final class ContainerItemHandler implements IItemHandler {
     private final BooleanSupplier enabled;
     private final IntPredicate active;
     private final Consumer<Container> changed;
+    private final SupportedBlocks.@Nullable WaterLevel water;
 
     public ContainerItemHandler(Container container, SlotLayout layout, BooleanSupplier enabled,
                                 IntPredicate active, Runnable changed) {
@@ -34,6 +35,11 @@ public final class ContainerItemHandler implements IItemHandler {
     /** {@code target} is resolved on every call, so a multiblock segment can forward to its current controller. */
     public ContainerItemHandler(Supplier<Container> target, @Nullable Direction side, SlotLayout layout, BooleanSupplier enabled,
                                 IntPredicate active, Consumer<Container> changed) {
+        this(target, side, layout, enabled, active, changed, null);
+    }
+    public ContainerItemHandler(Supplier<Container> target, @Nullable Direction side, SlotLayout layout, BooleanSupplier enabled,
+                                IntPredicate active, Consumer<Container> changed, SupportedBlocks.@Nullable WaterLevel water) {
+        this.water = water;
         this.target = target;
         this.side = side;
         this.layout = layout;
@@ -79,13 +85,22 @@ public final class ContainerItemHandler implements IItemHandler {
         ItemStack current = container.getItem(slot);
         if (!current.isEmpty() && !ItemStack.isSameItemSameTags(current, stack)) return stack;
         int count = SlotLayout.insertionCount(stack.getCount(), current.getCount(), getSlotLimit(slot), stack.getMaxStackSize());
-        if (count == 0) return stack;
+        count = Math.min(count, waterRoom(container, slot, stack, current.getCount()));
+        if (count <= 0) return stack;
         if (!simulate) {
             ItemStack updated = stack.copyWithCount(current.getCount() + count);
             container.setItem(slot, updated);
             changed.accept(container);
         }
         return stack.getCount() == count ? ItemStack.EMPTY : stack.copyWithCount(stack.getCount() - count);
+    }
+    /** Water-fill items the level still has room for, counting those already waiting in the slot; unlimited otherwise. */
+    private int waterRoom(Container container, int slot, ItemStack stack, int waiting) {
+        if (water == null || slot != water.fillSlot() || !(container instanceof BlockEntity entity)) return Integer.MAX_VALUE;
+        int units = water.unitsOf(stack);
+        if (units == 0) return Integer.MAX_VALUE;
+        int level = entity.saveWithoutMetadata().getInt(water.nbtKey());
+        return Math.max(0, (water.maxUnits() - level) / units - waiting);
     }
     @Override public ItemStack extractItem(int slot, int amount, boolean simulate) {
         if (!accessible(slot) || !layout.canExtract(slot) || amount <= 0) return ItemStack.EMPTY;

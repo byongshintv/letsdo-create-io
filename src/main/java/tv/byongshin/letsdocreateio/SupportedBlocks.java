@@ -27,11 +27,21 @@ public final class SupportedBlocks {
         static final TagKey<Item> LARGE = tag("meadow:large_water_fill");
     }
     private static final SlotLayout PAIR = new SlotLayout(3, List.of(1, 2), List.of(), List.of(0));
-    /** Internal water level NBT key and maximum, for blocks filled from water items; exposed as a fill-only tank. */
-    public record WaterLevel(String nbtKey, int maxUnits) {}
+    /**
+     * Internal water level NBT key and maximum, for blocks filled from water items; exposed as a fill-only tank.
+     * {@code fillSlot} holds water-fill items ({@code <namespace>:small_water_fill} adds 25, {@code large_water_fill} 50);
+     * natively the block consumes one per tick even at full level, so automation may only fill it up to the level's room.
+     */
+    public record WaterLevel(String nbtKey, int maxUnits, int fillSlot, String tagNamespace) {
+        public int unitsOf(ItemStack stack) {
+            if (stack.is(tag(tagNamespace + ":small_water_fill"))) return 25;
+            if (stack.is(tag(tagNamespace + ":large_water_fill"))) return 50;
+            return 0;
+        }
+    }
     public static final Map<String, WaterLevel> WATER = Map.of(
-        "meadow:cooking_cauldron", new WaterLevel("FluidLevel", 100),
-        "herbalbrews:tea_kettle", new WaterLevel("WaterLevel", 100));
+        "meadow:cooking_cauldron", new WaterLevel("FluidLevel", 100, 7, "meadow"),
+        "herbalbrews:tea_kettle", new WaterLevel("WaterLevel", 100, 6, "herbalbrews"));
     public static final Map<String, SlotLayout> TABLE = Map.ofEntries(
         Map.entry("bakery:small_cooking_pot", POT),
         Map.entry("beachparty:tiki_bar", PAIR),

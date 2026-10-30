@@ -48,6 +48,10 @@ Each face gets its own handler:
   - Meadow cooking cauldron: `meadow:small_water_fill` / `large_water_fill` items go
     to slot 7, anything else to 1–6. Natively water enters only from below, where
     the heat source must be.
+- **Water items only up to the level's room.** The tea kettle (slot 6) and Meadow
+  cooking cauldron (slot 7) consume a water-fill item every tick even at full level,
+  wasting it. Automation may insert water-fill items (small 25, large 50 units) only
+  while the level has room, counting items already waiting in the slot.
 - **Fermentation barrel sides also take what its top takes.** Natively juice enters
   only from the top and ingredients only from the sides, so no single face could take a
   mixed order. Horizontal faces now also accept the top's slots (juice to 0, wine bottle

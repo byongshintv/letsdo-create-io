@@ -78,14 +78,14 @@ public final class LetsDoCreateIO {
             if (changedContainer instanceof BlockEntity changedEntity) markChanged(changedEntity);
         };
         Runnable changed = () -> markChanged(entity);
+        var water = SupportedBlocks.WATER.get(id);
         Map<Direction, LazyOptional<IItemHandler>> sided = new java.util.EnumMap<>(Direction.class);
         for (Direction side : Direction.values()) {
             sided.put(side, LazyOptional.of(() -> new ContainerItemHandler(target, side, layout,
-                () -> !entity.isRemoved() && ENABLED.get(id).get(), active, changedItems)));
+                () -> !entity.isRemoved() && ENABLED.get(id).get(), active, changedItems, water)));
         }
         LazyOptional<IItemHandler> unsided = LazyOptional.of(() -> new ContainerItemHandler(target, null, layout,
-            () -> !entity.isRemoved() && ENABLED.get(id).get(), active, changedItems));
-        var water = SupportedBlocks.WATER.get(id);
+            () -> !entity.isRemoved() && ENABLED.get(id).get(), active, changedItems, water));
         boolean nativeFluid = entity.getCapability(ForgeCapabilities.FLUID_HANDLER).isPresent()
             || event.getCapabilities().values().stream().anyMatch(p -> p.getCapability(ForgeCapabilities.FLUID_HANDLER).isPresent());
         // One water tank for every face: unlike items there is nothing to route, and any Forge fluid pipe can fill it.

@@ -122,6 +122,33 @@ public final class AutomationGameTests {
                 helper.succeed();
             }));
         }
+        for (var water : SupportedBlocks.WATER.entrySet()) {
+            tests.add(test("water_items_" + water.getKey().replace(':', '_'), helper -> {
+                var entity = place(helper, water.getKey());
+                var config = water.getValue();
+                Container c = (Container) entity;
+                var handler = entity.getCapability(ForgeCapabilities.ITEM_HANDLER).orElseThrow(AssertionError::new);
+                var tank = entity.getCapability(ForgeCapabilities.FLUID_HANDLER).orElseThrow(AssertionError::new);
+                ItemStack small = ForgeRegistries.ITEMS.getValues().stream().map(ItemStack::new)
+                    .filter(stack -> !stack.isEmpty() && config.unitsOf(stack) == 25).findFirst().orElseThrow();
+                tank.fill(new FluidStack(Fluids.WATER, 2000), IFluidHandler.FluidAction.EXECUTE);
+                helper.assertTrue(entity.saveWithoutMetadata().getInt(config.nbtKey()) == 50, "Setup level not 50");
+                // Room for two 25-unit fills; one at a time so single-stack items (buckets) also work.
+                int inserted = 0;
+                for (int i = 0; i < 4; i++) {
+                    int max = Math.min(small.getMaxStackSize(), 4);
+                    ItemStack rest = handler.insertItem(config.fillSlot(), small.copyWithCount(max), false);
+                    inserted += max - rest.getCount();
+                    if (c.getItem(config.fillSlot()).getCount() >= small.getMaxStackSize()) break;
+                }
+                int expected = small.getMaxStackSize() >= 2 ? 2 : 1;
+                helper.assertTrue(inserted == expected, "Water items beyond the level's room: " + inserted);
+                c.setItem(config.fillSlot(), ItemStack.EMPTY);
+                tank.fill(new FluidStack(Fluids.WATER, 10000), IFluidHandler.FluidAction.EXECUTE);
+                helper.assertTrue(handler.insertItem(config.fillSlot(), small.copy(), false).getCount() == 1, "Full level accepted a water item");
+                helper.succeed();
+            }));
+        }
         tests.add(test("silo_multiblock", helper -> {
             // Owner report 10-29: funnels on a multiblock silo did nothing, because only the controller holds items.
             var type = ForgeRegistries.BLOCK_ENTITY_TYPES.getValue(new ResourceLocation("farm_and_charm:silo"));
