@@ -8,6 +8,8 @@ import net.minecraft.core.Direction;
 import net.minecraft.world.Container;
 import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraftforge.fml.ModList;
 import net.minecraftforge.items.IItemHandler;
 import org.jetbrains.annotations.Nullable;
 
@@ -17,6 +19,7 @@ import org.jetbrains.annotations.Nullable;
  * The unsided (null) handler keeps every table slot open.
  */
 public final class ContainerItemHandler implements IItemHandler {
+    private static final boolean QUALITY_FOOD = ModList.get().isLoaded("quality_food");
     private final Supplier<Container> target;
     private final @Nullable Direction side;
     private final SlotLayout layout;
@@ -88,6 +91,7 @@ public final class ContainerItemHandler implements IItemHandler {
         int count = Math.min(amount, Math.min(current.getCount(), current.getMaxStackSize()));
         ItemStack result = current.copyWithCount(count);
         if (!simulate) {
+            if (QUALITY_FOOD && container instanceof BlockEntity entity) QualityFoodBridge.applyCookingQuality(entity, result, current.getCount());
             container.setItem(slot, current.getCount() == count ? ItemStack.EMPTY : current.copyWithCount(current.getCount() - count));
             changed.accept(container);
         }

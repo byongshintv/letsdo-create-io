@@ -62,6 +62,9 @@ public final class AutomationGameTests {
             }
         }
         tests.add(test("handler_contract", AutomationGameTests::handlerContract));
+        if (net.minecraftforge.fml.ModList.get().isLoaded("quality_food")) {
+            tests.add(test("kettle_quality_food", helper -> QualityFoodTests.kettleGrades(helper)));
+        }
         tests.add(test("face_roaster", helper -> {
             var entity = place(helper, "farm_and_charm:roaster");
             Container c = (Container) entity;
