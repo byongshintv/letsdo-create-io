@@ -9,13 +9,19 @@ import net.minecraft.world.item.ItemStack;
  * {@code sideRoutes}, when present, replace the block's own horizontal-face slots: an item inserted from a side goes
  * only to the slots of the first route that accepts it. Used where the block's native face for an input is the one a
  * required neighbour covers (a pot on a stove's top, heat under a cauldron).
+ * {@code sidesUseTop} lets a horizontal face also fill what the block's own top face takes, so one side-mounted
+ * packager can unpack a mixed order (fermentation barrel: juice natively only from the top, ingredients only from sides).
  */
-public record SlotLayout(int size, List<Integer> inputs, List<Integer> fuel, List<Integer> outputs, List<Route> sideRoutes) {
+public record SlotLayout(int size, List<Integer> inputs, List<Integer> fuel, List<Integer> outputs, List<Route> sideRoutes,
+                         boolean sidesUseTop) {
     public record Route(Predicate<ItemStack> accepts, List<Integer> slots) {
         public Route { slots = List.copyOf(slots); }
     }
     public SlotLayout(int size, List<Integer> inputs, List<Integer> fuel, List<Integer> outputs) {
-        this(size, inputs, fuel, outputs, List.of());
+        this(size, inputs, fuel, outputs, List.of(), false);
+    }
+    public SlotLayout(int size, List<Integer> inputs, List<Integer> fuel, List<Integer> outputs, List<Route> sideRoutes) {
+        this(size, inputs, fuel, outputs, sideRoutes, false);
     }
     public SlotLayout {
         inputs = List.copyOf(inputs);

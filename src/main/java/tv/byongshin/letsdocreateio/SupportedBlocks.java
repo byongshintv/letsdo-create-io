@@ -53,6 +53,7 @@ public final class SupportedBlocks {
             new SlotLayout.Route(stack -> true, range(1, 6))))),
         // Slot 1 is the first recipe's output, consumed internally by the second recipe.
         Map.entry("vinery:apple_press", new SlotLayout(4, List.of(0, 2), List.of(), List.of(1, 3))),
-        Map.entry("vinery:fermentation_barrel", new SlotLayout(6, range(0, 4), List.of(), List.of(5)))
+        // Natively juice enters only from the top and ingredients only from the sides; sides also take juice.
+        Map.entry("vinery:fermentation_barrel", new SlotLayout(6, range(0, 4), List.of(), List.of(5), List.of(), true))
     );
 }

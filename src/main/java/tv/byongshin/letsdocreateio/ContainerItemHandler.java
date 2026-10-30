@@ -64,8 +64,12 @@ public final class ContainerItemHandler implements IItemHandler {
             if (routed != null) return routed.contains(slot);
         }
         if (!(container() instanceof WorldlyContainer worldly)) return true;
-        for (int faceSlot : worldly.getSlotsForFace(side)) {
-            if (faceSlot == slot) return worldly.canPlaceItemThroughFace(slot, stack, side);
+        return nativeFaceAllows(worldly, side, slot, stack)
+            || side.getAxis().isHorizontal() && layout.sidesUseTop() && nativeFaceAllows(worldly, Direction.UP, slot, stack);
+    }
+    private static boolean nativeFaceAllows(WorldlyContainer worldly, Direction face, int slot, ItemStack stack) {
+        for (int faceSlot : worldly.getSlotsForFace(face)) {
+            if (faceSlot == slot) return worldly.canPlaceItemThroughFace(slot, stack, face);
         }
         return false;
     }

@@ -48,6 +48,12 @@ Each face gets its own handler:
   - Meadow cooking cauldron: `meadow:small_water_fill` / `large_water_fill` items go
     to slot 7, anything else to 1–6. Natively water enters only from below, where
     the heat source must be.
+- **Fermentation barrel sides also take what its top takes.** Natively juice enters
+  only from the top and ingredients only from the sides, so no single face could take a
+  mixed order. Horizontal faces now also accept the top's slots (juice to 0, wine bottle
+  to 4) under the barrel's own rules; the top and the side ingredient rules are unchanged,
+  so ingredients still never reach the juice slot. One side-mounted packager can unpack
+  juice bottles, ingredients and a wine bottle together.
 - Blocks without native face rules (silo, brewing station) expose the same slots on
   every face.
 - The unsided (`null`) capability exposes every table slot.

@@ -170,6 +170,24 @@ public final class AutomationGameTests {
             helper.assertTrue(c.getItem(1).is(Items.APPLE), "Side ingredient not in slot 1");
             helper.succeed();
         }));
+        tests.add(test("face_fermentation_barrel", helper -> {
+            var entity = place(helper, "vinery:fermentation_barrel");
+            Container c = (Container) entity;
+            var worldly = (net.minecraft.world.WorldlyContainer) entity;
+            var side = face(entity, Direction.NORTH);
+            ItemStack juice = new ItemStack(ForgeRegistries.ITEMS.getValue(new ResourceLocation("nethervinery:crimson_grapejuice")), 2);
+            helper.assertTrue(!worldly.canPlaceItemThroughFace(0, juice, Direction.NORTH), "Native side now takes juice; route obsolete");
+            helper.assertTrue(ItemHandlerHelper.insertItem(side, juice.copy(), false).isEmpty(), "Side juice rejected");
+            helper.assertTrue(ItemStack.isSameItem(c.getItem(0), juice) && c.getItem(0).getCount() == 2, "Side juice not in slot 0");
+            ItemStack ingredient = ForgeRegistries.ITEMS.getValues().stream().map(ItemStack::new)
+                .filter(stack -> !stack.isEmpty() && worldly.canPlaceItemThroughFace(1, stack, Direction.NORTH))
+                .findFirst().orElseThrow();
+            helper.assertTrue(ItemHandlerHelper.insertItem(side, ingredient.copy(), false).isEmpty(), "Side ingredient rejected");
+            helper.assertTrue(ItemStack.isSameItem(c.getItem(1), ingredient), "Side ingredient not in slot 1");
+            helper.assertTrue(ItemHandlerHelper.insertItem(side, new ItemStack(Items.DIRT), false).getCount() == 1, "Side accepted non-ingredient");
+            helper.assertTrue(ItemHandlerHelper.insertItem(face(entity, Direction.UP), ingredient.copy(), false).getCount() == 1, "Top accepted ingredient");
+            helper.succeed();
+        }));
         tests.add(test("untargeted_chest", helper -> {
             helper.setBlock(new BlockPos(1, 1, 1), Blocks.CHEST);
             var be = helper.getBlockEntity(new BlockPos(1, 1, 1));
